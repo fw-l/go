@@ -51,7 +51,7 @@ type Conn struct {
 	// verifiedChains contains the certificate chains that we built, as
 	// opposed to the ones presented by the server.
 	verifiedChains [][]*x509.Certificate
-	// verifiedDC contains a delegated credential from the peer (if advertised
+	// verifiedDC contains the Delegated Credential sent by the peer (if advertised
 	// and correctly processed), which has been verified against the leaf certificate.
 	verifiedDC *DelegatedCredential
 	// serverName contains the server name indicated by the client, if any.

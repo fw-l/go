@@ -525,7 +525,6 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 					m.supportedSignatureAlgorithmsCert, SignatureScheme(sigAndAlg))
 			}
 		case extensionRenegotiationInfo:
-
 			// RFC 5746, Section 3.2
 			if !readUint8LengthPrefixed(&extData, &m.secureRenegotiation) {
 				return false

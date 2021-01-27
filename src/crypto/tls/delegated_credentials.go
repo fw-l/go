@@ -4,7 +4,7 @@
 
 package tls
 
-// Delegated credentials for TLS
+// Delegated Credentials for TLS
 // (https://tools.ietf.org/html/draft-ietf-tls-subcerts) is an IETF Internet
 // draft and proposed TLS extension. If the client or server supports this
 // extension, then the server or client may use a "delegated credential" as the
@@ -33,7 +33,7 @@ import (
 	"golang.org/x/crypto/cryptobyte"
 )
 
-// DCPeer represents the peer creating or validating a delegated credential.
+// DCPeer represents the peer creating or validating a Delegated Credential.
 type DCPeer uint8
 
 const (
@@ -44,17 +44,17 @@ const (
 	dcMaxTTL          = time.Duration(dcMaxTTLSeconds * time.Second)
 	dcMaxPubLen       = (1 << 24) - 1 // Bytes
 	dcMaxSignatureLen = (1 << 16) - 1 // Bytes
-	// DCServer represents a server creating or validating a delegated credential.
+	// DCServer represents a server creating or validating a Delegated Credential.
 	DCServer DCPeer = 0
-	// DCClient represents a client creating or validating a delegated credential.
+	// DCClient represents a client creating or validating a Delegated Credential.
 	DCClient DCPeer = 1
 )
 
 var errNoDelegationUsage = errors.New("tls: certificate not authorized for delegation")
 var extensionDelegatedCredential = []int{1, 3, 6, 1, 4, 1, 44363, 44}
 
-// isValidForDelegation returns true if a certificate can be used for delegated
-// credentials.
+// isValidForDelegation returns true if a certificate can be used for Delegated
+// Credentials.
 func isValidForDelegation(cert *x509.Certificate) bool {
 	// Check that the digitalSignature key usage is set.
 	// The certificate must contains the digitalSignature KeyUsage.
@@ -63,7 +63,7 @@ func isValidForDelegation(cert *x509.Certificate) bool {
 	}
 
 	// Check that the certificate has the DelegationUsage extension and that
-	// it's non-critical (See Section 4.2 of RFC5280).
+	// it's marked as non-critical (See Section 4.2 of RFC5280).
 	for _, extension := range cert.Extensions {
 		if extension.Id.Equal(extensionDelegatedCredential) {
 			if extension.Critical {
@@ -76,7 +76,7 @@ func isValidForDelegation(cert *x509.Certificate) bool {
 	return false
 }
 
-// IsExpired returns true if the credential has expired. The end of the validity
+// isExpired returns true if the credential has expired. The end of the validity
 // interval is defined as the delegator certificate's notBefore field ('start')
 // plus ValidTime seconds. This function simply checks that the current time
 // ('now') is before the end of the validity interval.
@@ -85,19 +85,19 @@ func (dc *DelegatedCredential) isExpired(start, now time.Time) bool {
 	return !now.Before(end)
 }
 
-// InvalidTTL returns true if the credential's validity period is longer than the
+// invalidTTL returns true if the credential's validity period is longer than the
 // maximum permitted. This is defined by the certificate's notBefore field
 // ('start') plus the ValidTime, minus the current time ('now').
 func (dc *DelegatedCredential) invalidTTL(start, now time.Time) bool {
 	return dc.cred.validTime > (now.Sub(start) + dcMaxTTL).Round(time.Second)
 }
 
-// Credential stores the public components of a Delegated Credential.
+// credential stores the public components of a Delegated Credential.
 type credential struct {
 	// The amount of time for which the credential is valid. Specifically, the
 	// the credential expires 'ValidTime' seconds after the 'notBefore' of the
-	// delegation certificate. The delegator shall not issue delegated
-	// credentials that are valid for more than 7 days from their current time.
+	// delegation certificate. The delegator shall not issue Delegated
+	// Credentials that are valid for more than 7 days from their current time.
 	//
 	// When this data structure is serialized, this value is converted to a
 	// uint32 representing the duration in seconds.
@@ -110,7 +110,7 @@ type credential struct {
 	publicKey crypto.PublicKey
 }
 
-// DelegatedCredential stores a delegated credential with the credential and its
+// DelegatedCredential stores a Delegated Credential with the credential and its
 // signature.
 type DelegatedCredential struct {
 	// The serialized form of the Delegated Credential.
@@ -207,7 +207,7 @@ func (cred *credential) marshal() ([]byte, error) {
 // unmarshalCredential decodes serialized bytes and returns a credential, if possible.
 func unmarshalCredential(ser []byte) (*credential, error) {
 	if len(ser) < 10 {
-		return nil, errors.New("tls: delegated credential is not valid: invalid length")
+		return nil, errors.New("tls: Delegated Credential is not valid: invalid length")
 	}
 
 	validTime := time.Duration(binary.BigEndian.Uint32(ser)) * time.Second
@@ -223,7 +223,7 @@ func unmarshalCredential(ser []byte) (*credential, error) {
 	}
 
 	if len(ser[9:]) != int(pubLen) {
-		return nil, errors.New("tls: delegated credential is not valid: invalid public key length")
+		return nil, errors.New("tls: Delegated Credential is not valid: invalid public key length")
 	}
 
 	return &credential{validTime, pubAlgo, pubKey}, nil
@@ -233,7 +233,7 @@ func unmarshalCredential(ser []byte) (*credential, error) {
 // credential struct inside the Delegated Credential.
 func getCredentialLen(ser []byte) (int, error) {
 	if len(ser) < 10 {
-		return 0, errors.New("tls: delegated credential is not valid")
+		return 0, errors.New("tls: Delegated Credential is not valid")
 	}
 
 	// The validity time.
@@ -246,12 +246,12 @@ func getCredentialLen(ser []byte) (int, error) {
 	var pubLen uint32
 	s.ReadUint24(&pubLen)
 	if !(pubLen > 0) {
-		return 0, errors.New("tls: delegated credential is not valid")
+		return 0, errors.New("tls: Delegated Credential is not valid")
 	}
 
 	ser = ser[3:]
 	if len(ser) < int(pubLen) {
-		return 0, errors.New("tls: delegated credential is not valid")
+		return 0, errors.New("tls: Delegated Credential is not valid")
 	}
 
 	return 9 + int(pubLen), nil
@@ -300,7 +300,7 @@ func prepareDelegationSignatureInput(hash crypto.Hash, cred *credential, dCert [
 	} else if peer == DCClient {
 		context = "TLS, client delegated credentials\x00"
 	} else {
-		return nil, errors.New("tls: invalid params for delegated credential")
+		return nil, errors.New("tls: invalid params for Delegated Credential")
 	}
 
 	serCred, err := cred.marshal()
@@ -327,11 +327,10 @@ func prepareDelegationSignatureInput(hash crypto.Hash, cred *credential, dCert [
 	h.Write(dCert)
 	h.Write(serCred)
 	h.Write(serAlgo[:])
-
 	return h.Sum(nil), nil
 }
 
-// Extract the algorithm used to sign the DelegatedCredential from the
+// Extract the algorithm used to sign the Delegated Credential from the
 // end-entity (leaf) certificate
 func getSigAlgo(cert *Certificate) (SignatureScheme, error) {
 	var sigAlgo SignatureScheme
@@ -352,17 +351,17 @@ func getSigAlgo(cert *Certificate) (SignatureScheme, error) {
 	case ed25519.PrivateKey:
 		sigAlgo = Ed25519
 	default:
-		return SignatureScheme(0x00), fmt.Errorf("tls: unsupported algorithm for delegated credential")
+		return SignatureScheme(0x00), fmt.Errorf("tls: unsupported algorithm for Delegated Credential")
 	}
 
 	return sigAlgo, nil
 }
 
-// NewDelegatedCredential creates a new delegated credential using 'cert' for
+// NewDelegatedCredential creates a new Delegated Credential using 'cert' for
 // delegation, depending if the caller is the client or the server (defined by
 // 'peer'). It generates a public/private key pair for the provided signature
 // algorithm ('pubAlgo') and it defines a validity interval (defined
-// by 'cert.Leaf.notBefore' and 'validTime'). It signs the delegated credential
+// by 'cert.Leaf.notBefore' and 'validTime'). It signs the Delegated Credential
 // using 'cert.PrivateKey'.
 func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTime time.Duration, peer DCPeer) (*DelegatedCredential, crypto.PrivateKey, error) {
 	// The granularity of DC validity is seconds.
@@ -372,7 +371,7 @@ func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTim
 	var err error
 	if cert.Leaf == nil {
 		if len(cert.Certificate[0]) == 0 {
-			return nil, nil, errors.New("tls: missing leaf certificate for delegated credential")
+			return nil, nil, errors.New("tls: missing leaf certificate for Delegated Credential")
 		}
 		cert.Leaf, err = x509.ParseCertificate(cert.Certificate[0])
 		if err != nil {
@@ -391,7 +390,7 @@ func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTim
 		return nil, nil, err
 	}
 
-	// Generate the Delegated Credential Key Pair based on the provided scheme
+	// Generate the Delegated Credential key pair based on the provided scheme
 	var privK crypto.PrivateKey
 	var pubK crypto.PublicKey
 	switch pubAlgo {
@@ -409,7 +408,7 @@ func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTim
 			return nil, nil, err
 		}
 	default:
-		return nil, nil, fmt.Errorf("tls: unsupported algorithm for delegated credential: %T", pubAlgo)
+		return nil, nil, fmt.Errorf("tls: unsupported algorithm for Delegated Credential: %T", pubAlgo)
 	}
 
 	// Prepare the credential for signing
@@ -435,11 +434,11 @@ func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTim
 			return nil, nil, err
 		}
 	default:
-		return nil, nil, fmt.Errorf("tls: unsupported key type for delegated credential")
+		return nil, nil, fmt.Errorf("tls: unsupported key type for Delegated Credential")
 	}
 
 	if len(sig) > dcMaxSignatureLen {
-		return nil, nil, errors.New("tls: unable to create a delegated credential")
+		return nil, nil, errors.New("tls: unable to create a Delegated Credential")
 	}
 
 	return &DelegatedCredential{
@@ -449,7 +448,7 @@ func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTim
 	}, privK, nil
 }
 
-// Validate validates the delegated credential by checking that the signature is
+// Validate validates the Delegated Credential by checking that the signature is
 // valid, that it hasn't expired, and that the TTL is valid. It also checks that
 // certificate can be used for delegation.
 func (dc *DelegatedCredential) Validate(cert *x509.Certificate, peer DCPeer, now time.Time, certVerifyMsg *certificateVerifyMsg) bool {
@@ -536,7 +535,7 @@ func unmarshalDelegatedCredential(ser []byte) (*DelegatedCredential, error) {
 
 	ser = ser[serCredentialLen:]
 	if len(ser) < 4 {
-		return nil, errors.New("tls: delegated credential is not valid")
+		return nil, errors.New("tls: Delegated Credential is not valid")
 	}
 	algo := SignatureScheme(binary.BigEndian.Uint16(ser))
 
@@ -545,7 +544,7 @@ func unmarshalDelegatedCredential(ser []byte) (*DelegatedCredential, error) {
 
 	ser = ser[2:]
 	if len(ser) < int(serSignatureLen) {
-		return nil, errors.New("tls: delegated credential is not valid")
+		return nil, errors.New("tls: Delegated Credential is not valid")
 	}
 	sig := make([]byte, serSignatureLen)
 	copy(sig, ser[:serSignatureLen])

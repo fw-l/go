@@ -91,27 +91,27 @@ func (hs *clientHandshakeStateTLS13) processDelegatedCredentialFromServer(dc []b
 	var dCred *DelegatedCredential
 	var err error
 	if dc != nil {
-		// Assert that the DC extension was indicated by the client.
+		// Assert that support for the DC extension was indicated by the client.
 		if !hs.hello.delegatedCredentialSupported {
-			c.sendAlert(alertIllegalParameter)
-			return errors.New("tls: got delegated credential extension without indication")
+			c.sendAlert(alertUnexpectedMessage)
+			return errors.New("tls: got Delegated Credential extension without indication")
 		}
 
 		dCred, err = unmarshalDelegatedCredential(dc)
 		if err != nil {
 			c.sendAlert(alertDecodeError)
-			return fmt.Errorf("tls: delegated credential: %s", err)
+			return fmt.Errorf("tls: Delegated Credential: %s", err)
 		}
 
 		if !isSupportedSignatureAlgorithm(dCred.cred.expCertVerfAlgo, supportedSignatureAlgorithmsDC) {
 			c.sendAlert(alertIllegalParameter)
-			return errors.New("tls: delegated credential used with invalid signature algorithm")
+			return errors.New("tls: Delegated Credential used with invalid signature algorithm")
 		}
 	}
 
 	if dCred != nil {
 		if !dCred.Validate(c.peerCertificates[0], DCServer, c.config.time(), certVerifyMsg) {
-			return errors.New("tls: invalid delegated credential")
+			return errors.New("tls: invalid Delegated Credential")
 		}
 	}
 
@@ -659,10 +659,9 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 		c.sendAlert(alertIllegalParameter)
 		return errors.New("tls: certificate used with invalid signature algorithm")
 	}
-
 	if certMsg.delegatedCredential {
 		if err := hs.processDelegatedCredentialFromServer(certMsg.certificate.DelegatedCredential, certVerify); err != nil {
-			return err
+			return err // alert sent
 		}
 	}
 

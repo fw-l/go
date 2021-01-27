@@ -323,7 +323,7 @@ type ConnectionState struct {
 	// (and the peer provided a certificate) or RequireAndVerifyClientCert.
 	VerifiedChains [][]*x509.Certificate
 
-	// VerifiedDC contains a delegated credential from the peer (if advertised
+	// VerifiedDC contains the Delegated Credential sent by the peer (if advertised
 	// and correctly processed), which has been verified against the leaf certificate.
 	VerifiedDC *DelegatedCredential
 
@@ -477,8 +477,8 @@ type ClientHelloInfo struct {
 	// Algorithms Extension is being used (see RFC 5246, Section 7.4.1.4.1).
 	SignatureSchemes []SignatureScheme
 
-	// SignatureSchemesDC lists the signature and hash schemes that the client
-	// is willing to verify when using delegated credentials.
+	// SignatureSchemesDC lists the signature schemes that the client
+	// is willing to verify when using Delegated Credentials.
 	// If Delegated Credentials are supported, this list should not be nil.
 	SignatureSchemesDC []SignatureScheme
 
@@ -497,7 +497,7 @@ type ClientHelloInfo struct {
 	SupportedVersions []uint16
 
 	// SupportDelegatedCredential is true if the client indicated willingness
-	// to negotiate the delegated credential extension.
+	// to negotiate the Delegated Credential extension.
 	SupportsDelegatedCredential bool
 
 	// Conn is the underlying net.Conn for the connection. Do not read
@@ -521,15 +521,15 @@ type CertificateRequestInfo struct {
 	AcceptableCAs [][]byte
 
 	// SupportDelegatedCredential is true if the server indicated willingness
-	// to negotiate the delegated credential extension.
+	// to negotiate the Delegated Credential extension.
 	SupportsDelegatedCredential bool
 
 	// SignatureSchemes lists the signature schemes that the server is
 	// willing to verify.
 	SignatureSchemes []SignatureScheme
 
-	// SignatureSchemesDC lists the signature and hash schemes that the server
-	// is willing to verify when using delegated credentials.
+	// SignatureSchemesDC lists the signature schemes that the server
+	// is willing to verify when using Delegated Credentials.
 	SignatureSchemesDC []SignatureScheme
 
 	// Version is the TLS version that was negotiated for this connection.
@@ -789,7 +789,6 @@ type Config struct {
 	// SupportDelegatedCredential is true if the client or server is willing
 	// to negotiate the delegated credential extension.
 	// This can only be used with TLS 1.3.
-	// Note: this is only added for purposes on the PQ KEM Experiment.
 	//
 	// See https://tools.ietf.org/html/draft-ietf-tls-subcerts.
 	SupportDelegatedCredential bool
@@ -803,7 +802,6 @@ type Config struct {
 
 	// mutex protects sessionTicketKeys and autoSessionTicketKeys.
 	mutex sync.RWMutex
-
 	// sessionTicketKeys contains zero or more ticket keys. If set, it means the
 	// the keys were set with SessionTicketKey or SetSessionTicketKeys. The
 	// first key is used for new tickets and any subsequent keys can be used to

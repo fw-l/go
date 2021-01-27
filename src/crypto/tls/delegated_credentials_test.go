@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-// dcAndPrivateKey stores a delegated credential and its corresponding private
+// dcAndPrivateKey stores a Delegated Credential and its corresponding private
 // key.
 type dcAndPrivateKey struct {
 	*DelegatedCredential
@@ -380,7 +380,7 @@ func TestDelegateCredentialsValidate(t *testing.T) {
 	}
 }
 
-// Test encoding/decoding of delegated credentials.
+// Test encoding/decoding of Delegated Credentials.
 func TestDelegatedCredentialMarshal(t *testing.T) {
 	initialize()
 	cert := dcTestCerts["dcEd25519"]
@@ -435,8 +435,8 @@ var dcTests = []struct {
 	{true, true, VersionTLS13, VersionTLS10, false, false, "server using TLS 1.0. No DC is supported in that version."},
 }
 
-// Checks that the client suppports a version >= 1.3 and accepts delegated
-// credentials. If so, it returns the delegation certificate; otherwise it
+// Checks that the client suppports a version >= 1.3 and accepts Delegated
+// Credentials. If so, it returns the delegation certificate; otherwise it
 // returns a non-delegated certificate.
 func testServerGetCertificate(ch *ClientHelloInfo) (*Certificate, error) {
 	versOk := false
@@ -451,9 +451,9 @@ func testServerGetCertificate(ch *ClientHelloInfo) (*Certificate, error) {
 
 }
 
-// Checks that the client suppports a version >= 1.3 and accepts delegated
-// credentials. If so, it returns the delegation certificate; otherwise it
-// returns a non-delegated certificate.
+// Checks that the client suppports a version >= 1.3 and accepts Delegated
+// Credentials. If so, it returns the delegation certificate; otherwise it
+// returns a non-Delegated certificate.
 func testClientGetCertificate(cr *CertificateRequestInfo) (*Certificate, error) {
 	versOk := false
 	if cr.Version == VersionTLS13 {
@@ -560,7 +560,7 @@ func testConnWithDC(t *testing.T, clientMsg, serverMsg string, clientConfig, ser
 	return false, nil
 }
 
-// Test the server authentication with the delegated credential extension.
+// Test the server authentication with the Delegated Credential extension.
 func TestDCHandshakeServerAuth(t *testing.T) {
 	serverMsg := "hello, client"
 	clientMsg := "hello, server"
@@ -600,7 +600,7 @@ func TestDCHandshakeServerAuth(t *testing.T) {
 	inc = 0
 }
 
-// Test the client authentication with the delegated credential extension.
+// Test the client authentication with the Delegated Credential extension.
 func TestDCHandshakeClientAuth(t *testing.T) {
 	clientMsg := "hello, server"
 	serverMsg := "hello, client"
@@ -641,7 +641,7 @@ func TestDCHandshakeClientAuth(t *testing.T) {
 	inc = 0
 }
 
-// Test server and client authentication with the delegated credential extension.
+// Test server and client authentication with the Delegated Credential extension.
 func TestDCHandshakeClientAndServerAuth(t *testing.T) {
 	clientMsg := "hello, server"
 	serverMsg := "hello, client"
