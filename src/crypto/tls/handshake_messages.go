@@ -772,8 +772,10 @@ func (m *serverHelloMsg) marshal() []byte {
 					})
 				})
 			}
+
 			extensionsPresent = len(b.BytesOrPanic()) > 2
 		})
+
 		if !extensionsPresent {
 			*b = bWithoutExtensions
 		}
