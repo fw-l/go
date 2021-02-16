@@ -524,7 +524,7 @@ func (hs *serverHandshakeStateTLS13) pickCertificate() error {
 			}
 			hs.cert.DelegatedCredential = dCred.raw
 
-			hs.sigAlg, err = selectSignatureScheme(c.vers, certificate, hs.clientHello.supportedSignatureAlgorithmsDC)
+			hs.sigAlg, err = selectSignatureSchemeDC(c.vers, dCred, hs.clientHello.supportedSignatureAlgorithmsDC)
 			if err != nil {
 				// getCertificate returned a certificate that is unsupported or
 				// incompatible with the client's signature algorithms.

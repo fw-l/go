@@ -761,8 +761,11 @@ func (hs *clientHandshakeStateTLS13) sendClientCertificate() error {
 		return err
 	}
 
+	var dCred *DelegatedCredential
 	if hs.certReq.supportDelegatedCredential && c.config.GetDelegatedCredential != nil {
-		dCred, priv, err := c.config.GetDelegatedCredential(nil, certificateRequestInfo(hs.certReq))
+		var priv crypto.PrivateKey
+		var err error
+		dCred, priv, err = c.config.GetDelegatedCredential(nil, certificateRequestInfo(hs.certReq))
 		if err != nil {
 			c.sendAlert(alertInternalError)
 			return nil
@@ -803,17 +806,25 @@ func (hs *clientHandshakeStateTLS13) sendClientCertificate() error {
 	certVerifyMsg := new(certificateVerifyMsg)
 	certVerifyMsg.hasSignatureAlgorithm = true
 
+	var sigAlgorithm SignatureScheme
 	suppSigAlgo := hs.certReq.supportedSignatureAlgorithms
-	if certMsg.delegatedCredential {
-		suppSigAlgo = hs.certReq.supportedSignatureAlgorithmsDC
-	}
-
-	sigAlgorithm, err := selectSignatureScheme(c.vers, cert, suppSigAlgo)
+	sigAlgorithm, err = selectSignatureScheme(c.vers, cert, suppSigAlgo)
 	if err != nil {
 		// getClientCertificate returned a certificate incompatible with the
 		// CertificateRequestInfo supported signature algorithms.
 		c.sendAlert(alertHandshakeFailure)
 		return err
+	}
+
+	if certMsg.delegatedCredential {
+		suppSigAlgo = hs.certReq.supportedSignatureAlgorithmsDC
+		sigAlgorithm, err = selectSignatureSchemeDC(c.vers, dCred, suppSigAlgo)
+		if err != nil {
+			// getDelegatedCredential returned a delegated credential incompatible with the
+			// CertificateRequestInfo supported signature algorithms.
+			c.sendAlert(alertHandshakeFailure)
+			return err
+		}
 	}
 
 	certVerifyMsg.signatureAlgorithm = sigAlgorithm
