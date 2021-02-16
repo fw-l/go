@@ -323,9 +323,10 @@ type ConnectionState struct {
 	// (and the peer provided a certificate) or RequireAndVerifyClientCert.
 	VerifiedChains [][]*x509.Certificate
 
-	// VerifiedDC contains the Delegated Credential sent by the peer (if advertised
-	// and correctly processed), which has been verified against the leaf certificate.
-	VerifiedDC *DelegatedCredential
+	// VerifiedDC indicates thata the Delegated Credential sent by the peer (if advertised
+	// and correctly processed), which has been verified against the leaf certificate,
+	// has been used.
+	VerifiedDC bool
 
 	// SignedCertificateTimestamps is a list of SCTs provided by the peer
 	// through the TLS handshake for the leaf certificate, if any.
@@ -479,6 +480,7 @@ type ClientHelloInfo struct {
 
 	// SignatureSchemesDC lists the signature schemes that the client
 	// is willing to verify when using Delegated Credentials.
+	// This can be different from SignatureSchemes.
 	// If Delegated Credentials are supported, this list should not be nil.
 	SignatureSchemesDC []SignatureScheme
 
@@ -1447,8 +1449,7 @@ type Certificate struct {
 	// Certificate Timestamps which will be served to clients that request it.
 	SignedCertificateTimestamps [][]byte
 	// DelegatedCredential is a serialized Delegated Credential, signed by
-	// the leaf certificate. See
-	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-09#section-4
+	// the leaf certificate.
 	// If not supported, this will be nil.
 	DelegatedCredential []byte
 	// Leaf is the parsed form of the leaf certificate, which may be initialized

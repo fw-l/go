@@ -1448,7 +1448,9 @@ func (c *Conn) connectionStateLocked() ConnectionState {
 	state.CipherSuite = c.cipherSuite
 	state.PeerCertificates = c.peerCertificates
 	state.VerifiedChains = c.verifiedChains
-	state.VerifiedDC = c.verifiedDC
+	if c.verifiedDC != nil {
+		state.VerifiedDC = true
+	}
 	state.SignedCertificateTimestamps = c.scts
 	state.OCSPResponse = c.ocspResponse
 	state.ECHAccepted = c.ech.accepted

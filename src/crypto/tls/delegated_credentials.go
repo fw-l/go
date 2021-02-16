@@ -1,6 +1,5 @@
-// Copyright 2018 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Copyright 2020-2021 Cloudflare, Inc. All rights reserved. Use of this source code
+// is governed by a BSD-style license that can be found in the LICENSE file.
 
 package tls
 
@@ -10,10 +9,9 @@ package tls
 // extension, then the server or client may use a "delegated credential" as the
 // signing key in the handshake. A delegated credential is a short lived
 // public/secret key pair delegated to the peer by an entity trusted by the
-// corresponding peer. This allows a middlebox to terminate a TLS connection on
-// behalf of the entity; for example, this can be used to delegate TLS
-// termination to a reverse proxy. Credentials can't be revoked; in order to
-// mitigate risk in case the middlebox is compromised, the credential is only
+// corresponding peer. This allows a reverse proxy to terminate a TLS connection
+// on behalf of the entity. Credentials can't be revoked; in order to
+// mitigate risk in case the reverse proxy is compromised, the credential is only
 // valid for a short time (days, hours, or even minutes).
 
 import (
