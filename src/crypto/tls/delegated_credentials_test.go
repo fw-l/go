@@ -242,13 +242,13 @@ func initialize() {
 	}
 
 	for i := 0; i < len(dcTestDCScheme); i++ {
-		dc, sk, err := NewDelegatedCredential(dcCertP256, dcTestDCScheme[i], dcNow.Sub(dcCertP256.Leaf.NotBefore)+dcMaxTTL, DCServer)
+		dc, sk, err := NewDelegatedCredential(dcCertP256, dcTestDCScheme[i], dcNow.Sub(dcCertP256.Leaf.NotBefore)+dcMaxTTL, false)
 		if err != nil {
 			panic(err)
 		}
 		serverDC = append(serverDC, &dcAndPrivateKey{dc, sk})
 
-		dc, sk, err = NewDelegatedCredential(dcCertP256, dcTestDCScheme[i], dcNow.Sub(dcCertP256.Leaf.NotBefore)+dcMaxTTL, DCClient)
+		dc, sk, err = NewDelegatedCredential(dcCertP256, dcTestDCScheme[i], dcNow.Sub(dcCertP256.Leaf.NotBefore)+dcMaxTTL, true)
 		if err != nil {
 			panic(err)
 		}
@@ -299,7 +299,7 @@ func TestDelegateCredentialsValidate(t *testing.T) {
 	cert := dcTestCerts["dcP384"]
 	validTime := dcNow.Sub(cert.Leaf.NotBefore) + dcMaxTTL
 
-	delegatedCred, _, err := NewDelegatedCredential(cert, ECDSAWithP384AndSHA384, validTime, DCServer)
+	delegatedCred, _, err := NewDelegatedCredential(cert, ECDSAWithP384AndSHA384, validTime, false)
 	if err != nil {
 		t.Fatal(err)
 	} else if delegatedCred == nil {
@@ -313,40 +313,40 @@ func TestDelegateCredentialsValidate(t *testing.T) {
 	m.signature = randomBytes(rand.Intn(15)+1, rand)
 
 	// Valid Delegated Credential
-	if !delegatedCred.Validate(cert.Leaf, DCServer, dcNow, m) {
+	if !delegatedCred.Validate(cert.Leaf, false, dcNow, m) {
 		t.Error("generated valid Delegated Credential is rendered invalid")
 	}
 
 	// Expired Delegated Credential
 	expired := dcNow.Add(dcMaxTTL).Add(time.Nanosecond)
-	if delegatedCred.Validate(cert.Leaf, DCServer, expired, m) {
+	if delegatedCred.Validate(cert.Leaf, false, expired, m) {
 		t.Error("expired delegated credential is valid; want invalid")
 	}
 
 	// Test validation of Delegated Credential which TTL is too long
-	invalidDelegatedCred, _, err := NewDelegatedCredential(cert, ECDSAWithP384AndSHA384, validTime+time.Second, DCServer)
+	invalidDelegatedCred, _, err := NewDelegatedCredential(cert, ECDSAWithP384AndSHA384, validTime+time.Second, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if invalidDelegatedCred.Validate(cert.Leaf, DCServer, dcNow, m) {
+	if invalidDelegatedCred.Validate(cert.Leaf, false, dcNow, m) {
 		t.Error("Delegated Credential validation with long TTL succeeded; want failure")
 	}
 
 	shortValidTime := dcNow.Sub(cert.Leaf.NotBefore) + time.Second
 
 	// Test validation of Delegated Credential which TTL is short
-	delegatedCred, _, err = NewDelegatedCredential(cert, ECDSAWithP384AndSHA384, shortValidTime, DCServer)
+	delegatedCred, _, err = NewDelegatedCredential(cert, ECDSAWithP384AndSHA384, shortValidTime, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !delegatedCred.Validate(cert.Leaf, DCServer, dcNow, m) {
+	if !delegatedCred.Validate(cert.Leaf, false, dcNow, m) {
 		t.Error("valid Delegated Credential is invalid; want valid")
 	}
 
 	delegatedCred.algorithm = ECDSAWithP521AndSHA512
 
 	// Test signature algorithm binding
-	if delegatedCred.Validate(cert.Leaf, DCServer, dcNow, m) {
+	if delegatedCred.Validate(cert.Leaf, false, dcNow, m) {
 		t.Error("Delegated Credential with wrong scheme is valid; want invalid")
 	}
 
@@ -354,19 +354,19 @@ func TestDelegateCredentialsValidate(t *testing.T) {
 
 	// Test delegation certificate binding
 	cert.Leaf.Raw[0] ^= byte(42)
-	if delegatedCred.Validate(cert.Leaf, DCServer, dcNow, m) {
+	if delegatedCred.Validate(cert.Leaf, false, dcNow, m) {
 		t.Error("Delegated Credential with wrong certificate is valid; want invalid")
 	}
 
 	// Test validation of DC using a certificate that can't delegate.
-	if delegatedCred.Validate(dcTestCerts["no dc"].Leaf, DCServer, dcNow, m) {
+	if delegatedCred.Validate(dcTestCerts["no dc"].Leaf, false, dcNow, m) {
 		t.Error("Delegated Credential with non-delegation cert is valid; want invalid")
 	}
 
 	// Test DC with another certificate
 	cert = dcTestCerts["dcP521"]
 	validTime = dcNow.Sub(cert.Leaf.NotBefore) + dcMaxTTL
-	delegatedCred, _, err = NewDelegatedCredential(cert, ECDSAWithP384AndSHA384, validTime, DCServer)
+	delegatedCred, _, err = NewDelegatedCredential(cert, ECDSAWithP384AndSHA384, validTime, false)
 	if err != nil {
 		t.Fatal(err)
 	} else if delegatedCred == nil {
@@ -374,7 +374,7 @@ func TestDelegateCredentialsValidate(t *testing.T) {
 	}
 
 	// Valid Delegated Credential
-	if !delegatedCred.Validate(cert.Leaf, DCServer, dcNow, m) {
+	if !delegatedCred.Validate(cert.Leaf, false, dcNow, m) {
 		t.Error("generated valid Delegated Credential is rendered invalid")
 	}
 }
@@ -386,7 +386,7 @@ func TestDelegatedCredentialMarshal(t *testing.T) {
 	time := dcNow.Sub(cert.Leaf.NotBefore) + dcMaxTTL
 
 	for _, sig := range dcTestDCScheme {
-		delegatedCred, _, err := NewDelegatedCredential(cert, sig, time, DCServer)
+		delegatedCred, _, err := NewDelegatedCredential(cert, sig, time, false)
 		if err != nil {
 			t.Fatal(err)
 		}

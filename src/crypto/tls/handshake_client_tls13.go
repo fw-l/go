@@ -110,7 +110,7 @@ func (hs *clientHandshakeStateTLS13) processDelegatedCredentialFromServer(dc []b
 	}
 
 	if dCred != nil {
-		if !dCred.Validate(c.peerCertificates[0], DCServer, c.config.time(), certVerifyMsg) {
+		if !dCred.Validate(c.peerCertificates[0], false, c.config.time(), certVerifyMsg) {
 			return errors.New("tls: invalid Delegated Credential")
 		}
 	}

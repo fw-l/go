@@ -31,9 +31,6 @@ import (
 	"golang.org/x/crypto/cryptobyte"
 )
 
-// DCPeer represents the peer creating or validating a Delegated Credential.
-type DCPeer uint8
-
 const (
 	// In the absence of an application profile standard specifying otherwise,
 	// the maximum validity period is set to 7 days, as defined on draft:
@@ -42,10 +39,6 @@ const (
 	dcMaxTTL          = time.Duration(dcMaxTTLSeconds * time.Second)
 	dcMaxPubLen       = (1 << 24) - 1 // Bytes
 	dcMaxSignatureLen = (1 << 16) - 1 // Bytes
-	// DCServer represents a server creating or validating a Delegated Credential.
-	DCServer DCPeer = 0
-	// DCClient represents a client creating or validating a Delegated Credential.
-	DCClient DCPeer = 1
 )
 
 var errNoDelegationUsage = errors.New("tls: certificate not authorized for delegation")
@@ -286,19 +279,17 @@ func getCurve(scheme SignatureScheme) elliptic.Curve {
 }
 
 // prepareDelegationSignatureInput returns the message that the delegator is going to sign.
-func prepareDelegationSignatureInput(hash crypto.Hash, cred *credential, dCert []byte, algo SignatureScheme, peer DCPeer) ([]byte, error) {
+func prepareDelegationSignatureInput(hash crypto.Hash, cred *credential, dCert []byte, algo SignatureScheme, isClient bool) ([]byte, error) {
 	header := make([]byte, 64, 128)
 	for i := range header {
 		header[i] = 0x20
 	}
 
 	var context string
-	if peer == DCServer {
+	if !isClient {
 		context = "TLS, server delegated credentials\x00"
-	} else if peer == DCClient {
-		context = "TLS, client delegated credentials\x00"
 	} else {
-		return nil, errors.New("tls: invalid params for Delegated Credential")
+		context = "TLS, client delegated credentials\x00"
 	}
 
 	serCred, err := cred.marshal()
@@ -361,7 +352,7 @@ func getSigAlgo(cert *Certificate) (SignatureScheme, error) {
 // algorithm ('pubAlgo') and it defines a validity interval (defined
 // by 'cert.Leaf.notBefore' and 'validTime'). It signs the Delegated Credential
 // using 'cert.PrivateKey'.
-func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTime time.Duration, peer DCPeer) (*DelegatedCredential, crypto.PrivateKey, error) {
+func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTime time.Duration, isClient bool) (*DelegatedCredential, crypto.PrivateKey, error) {
 	// The granularity of DC validity is seconds.
 	validTime = validTime.Round(time.Second)
 
@@ -412,7 +403,7 @@ func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTim
 	// Prepare the credential for signing
 	hash := getHash(sigAlgo)
 	credential := &credential{validTime, pubAlgo, pubK}
-	values, err := prepareDelegationSignatureInput(hash, credential, cert.Leaf.Raw, sigAlgo, peer)
+	values, err := prepareDelegationSignatureInput(hash, credential, cert.Leaf.Raw, sigAlgo, isClient)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -449,7 +440,7 @@ func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTim
 // Validate validates the Delegated Credential by checking that the signature is
 // valid, that it hasn't expired, and that the TTL is valid. It also checks that
 // certificate can be used for delegation.
-func (dc *DelegatedCredential) Validate(cert *x509.Certificate, peer DCPeer, now time.Time, certVerifyMsg *certificateVerifyMsg) bool {
+func (dc *DelegatedCredential) Validate(cert *x509.Certificate, isClient bool, now time.Time, certVerifyMsg *certificateVerifyMsg) bool {
 	if dc.isExpired(cert.NotBefore, now) {
 		return false
 	}
@@ -467,7 +458,7 @@ func (dc *DelegatedCredential) Validate(cert *x509.Certificate, peer DCPeer, now
 	}
 
 	hash := getHash(dc.algorithm)
-	in, err := prepareDelegationSignatureInput(hash, dc.cred, cert.Raw, dc.algorithm, peer)
+	in, err := prepareDelegationSignatureInput(hash, dc.cred, cert.Raw, dc.algorithm, isClient)
 	if err != nil {
 		return false
 	}
