@@ -320,7 +320,7 @@ func prepareDelegationSignatureInput(hash crypto.Hash, cred *credential, dCert [
 
 // Extract the algorithm used to sign the Delegated Credential from the
 // end-entity (leaf) certificate
-func getSigAlgo(cert *Certificate) (SignatureScheme, error) {
+func getSignatureAlgorithm(cert *Certificate) (SignatureScheme, error) {
 	var sigAlgo SignatureScheme
 	switch sk := cert.PrivateKey.(type) {
 	case *ecdsa.PrivateKey:
@@ -373,7 +373,7 @@ func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTim
 		return nil, nil, errNoDelegationUsage
 	}
 
-	sigAlgo, err := getSigAlgo(cert)
+	sigAlgo, err := getSignatureAlgorithm(cert)
 	if err != nil {
 		return nil, nil, err
 	}
