@@ -33,8 +33,7 @@ import (
 
 const (
 	// In the absence of an application profile standard specifying otherwise,
-	// the maximum validity period is set to 7 days, as defined on draft:
-	// https://datatracker.ietf.org/doc/draft-ietf-tls-subcerts/
+	// the maximum validity period is set to 7 days.
 	dcMaxTTLSeconds   = 60 * 60 * 24 * 7
 	dcMaxTTL          = time.Duration(dcMaxTTLSeconds * time.Second)
 	dcMaxPubLen       = (1 << 24) - 1 // Bytes
