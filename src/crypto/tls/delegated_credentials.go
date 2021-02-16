@@ -279,7 +279,7 @@ func getCurve(scheme SignatureScheme) elliptic.Curve {
 
 // prepareDelegationSignatureInput returns the message that the delegator is going to sign.
 func prepareDelegationSignatureInput(hash crypto.Hash, cred *credential, dCert []byte, algo SignatureScheme, isClient bool) ([]byte, error) {
-	header := make([]byte, 64, 128)
+	header := make([]byte, 64)
 	for i := range header {
 		header[i] = 0x20
 	}
