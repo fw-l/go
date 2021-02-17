@@ -128,12 +128,12 @@ func (cred *credential) marshalPublicKeyInfo() ([]byte, error) {
 		ECDSAWithP384AndSHA384,
 		ECDSAWithP521AndSHA512,
 		Ed25519:
-		serPub, err := x509.MarshalPKIXPublicKey(cred.publicKey)
+		rawPub, err := x509.MarshalPKIXPublicKey(cred.publicKey)
 		if err != nil {
 			return nil, err
 		}
 
-		return serPub, nil
+		return rawPub, nil
 	default:
 		return nil, fmt.Errorf("tls: unsupported signature scheme: 0x%04x", cred.expCertVerfAlgo)
 	}
@@ -147,29 +147,29 @@ func (cred *credential) marshal() ([]byte, error) {
 	b.AddUint16(uint16(cred.expCertVerfAlgo))
 
 	// Encode the public key
-	serPub, err := cred.marshalPublicKeyInfo()
+	rawPub, err := cred.marshalPublicKeyInfo()
 	if err != nil {
 		return nil, err
 	}
 	// Assert that the public key encoding is no longer than 2^24-1 bytes.
-	if len(serPub) > dcMaxPubLen {
+	if len(rawPub) > dcMaxPubLen {
 		return nil, errors.New("tls: public key length exceeds 2^24-1 limit")
 	}
 
-	b.AddUint24(uint32(len(serPub)))
-	b.AddBytes(serPub)
+	b.AddUint24(uint32(len(rawPub)))
+	b.AddBytes(rawPub)
 
-	ser := b.BytesOrPanic()
-	return ser, nil
+	raw := b.BytesOrPanic()
+	return raw, nil
 }
 
 // unmarshalCredential decodes serialized bytes and returns a credential, if possible.
-func unmarshalCredential(ser []byte) (*credential, error) {
-	if len(ser) < 10 {
+func unmarshalCredential(raw []byte) (*credential, error) {
+	if len(raw) < 10 {
 		return nil, errors.New("tls: Delegated Credential is not valid: invalid length")
 	}
 
-	s := cryptobyte.String(ser)
+	s := cryptobyte.String(raw)
 	var t uint32
 	if !s.ReadUint32(&t) {
 		return nil, errors.New("tls: Delegated Credential is not valid")
@@ -195,13 +195,13 @@ func unmarshalCredential(ser []byte) (*credential, error) {
 
 // getCredentialLen returns the number of bytes comprising the serialized
 // credential struct inside the Delegated Credential.
-func getCredentialLen(ser []byte) (int, error) {
-	if len(ser) < 10 {
+func getCredentialLen(raw []byte) (int, error) {
+	if len(raw) < 10 {
 		return 0, errors.New("tls: Delegated Credential is not valid")
 	}
 
 	var read []byte
-	s := cryptobyte.String(ser)
+	s := cryptobyte.String(raw)
 	s.ReadBytes(&read, 6)
 
 	var pubLen uint32
@@ -210,8 +210,8 @@ func getCredentialLen(ser []byte) (int, error) {
 		return 0, errors.New("tls: Delegated Credential is not valid")
 	}
 
-	ser = ser[6:]
-	if len(ser) < int(pubLen) {
+	raw = raw[6:]
+	if len(raw) < int(pubLen) {
 		return 0, errors.New("tls: Delegated Credential is not valid")
 	}
 
@@ -262,21 +262,21 @@ func prepareDelegationSignatureInput(hash crypto.Hash, cred *credential, dCert [
 		context = "TLS, client delegated credentials\x00"
 	}
 
-	serCred, err := cred.marshal()
+	rawCred, err := cred.marshal()
 	if err != nil {
 		return nil, err
 	}
 
-	var serAlgo [2]byte
-	binary.BigEndian.PutUint16(serAlgo[:], uint16(algo))
+	var rawAlgo [2]byte
+	binary.BigEndian.PutUint16(rawAlgo[:], uint16(algo))
 
 	if hash == directSigning {
 		b := &bytes.Buffer{}
 		b.Write(header)
 		io.WriteString(b, context)
 		b.Write(dCert)
-		b.Write(serCred)
-		b.Write(serAlgo[:])
+		b.Write(rawCred)
+		b.Write(rawAlgo[:])
 		return b.Bytes(), nil
 	}
 
@@ -284,8 +284,8 @@ func prepareDelegationSignatureInput(hash crypto.Hash, cred *credential, dCert [
 	h.Write(header)
 	io.WriteString(h, context)
 	h.Write(dCert)
-	h.Write(serCred)
-	h.Write(serAlgo[:])
+	h.Write(rawCred)
+	h.Write(rawAlgo[:])
 	return h.Sum(nil), nil
 }
 
@@ -458,55 +458,55 @@ func (dc *DelegatedCredential) Validate(cert *x509.Certificate, isClient bool, n
 // marshal encodes a DelegatedCredential structure. It also sets dc.Raw to that
 // encoding.
 func (dc *DelegatedCredential) marshal() ([]byte, error) {
-	ser, err := dc.cred.marshal()
+	raw, err := dc.cred.marshal()
 	if err != nil {
 		return nil, err
 	}
 
-	serAlgo := make([]byte, 2)
-	binary.BigEndian.PutUint16(serAlgo, uint16(dc.algorithm))
-	ser = append(ser, serAlgo...)
+	rawAlgo := make([]byte, 2)
+	binary.BigEndian.PutUint16(rawAlgo, uint16(dc.algorithm))
+	raw = append(raw, rawAlgo...)
 
 	if len(dc.signature) > dcMaxSignatureLen {
 		return nil, errors.New("tls: delegated credential is not valid")
 	}
-	serLenSig := make([]byte, 2)
-	binary.BigEndian.PutUint16(serLenSig, uint16(len(dc.signature)))
+	rawLenSig := make([]byte, 2)
+	binary.BigEndian.PutUint16(rawLenSig, uint16(len(dc.signature)))
 
-	ser = append(ser, serLenSig...)
-	ser = append(ser, dc.signature...)
+	raw = append(raw, rawLenSig...)
+	raw = append(raw, dc.signature...)
 
-	dc.raw = ser
-	return ser, nil
+	dc.raw = raw
+	return raw, nil
 }
 
 // unmarshalDelegatedCredential decodes a DelegatedCredential structure.
-func unmarshalDelegatedCredential(ser []byte) (*DelegatedCredential, error) {
-	serCredentialLen, err := getCredentialLen(ser)
+func unmarshalDelegatedCredential(raw []byte) (*DelegatedCredential, error) {
+	rawCredentialLen, err := getCredentialLen(raw)
 	if err != nil {
 		return nil, err
 	}
 
-	credential, err := unmarshalCredential(ser[:serCredentialLen])
+	credential, err := unmarshalCredential(raw[:rawCredentialLen])
 	if err != nil {
 		return nil, err
 	}
 
-	ser = ser[serCredentialLen:]
-	if len(ser) < 4 {
+	raw = raw[rawCredentialLen:]
+	if len(raw) < 4 {
 		return nil, errors.New("tls: Delegated Credential is not valid")
 	}
-	algo := SignatureScheme(binary.BigEndian.Uint16(ser))
+	algo := SignatureScheme(binary.BigEndian.Uint16(raw))
 
-	ser = ser[2:]
-	serSignatureLen := binary.BigEndian.Uint16(ser)
+	raw = raw[2:]
+	rawSignatureLen := binary.BigEndian.Uint16(raw)
 
-	ser = ser[2:]
-	if len(ser) < int(serSignatureLen) {
+	raw = raw[2:]
+	if len(raw) < int(rawSignatureLen) {
 		return nil, errors.New("tls: Delegated Credential is not valid")
 	}
-	sig := make([]byte, serSignatureLen)
-	copy(sig, ser[:serSignatureLen])
+	sig := make([]byte, rawSignatureLen)
+	copy(sig, raw[:rawSignatureLen])
 
 	return &DelegatedCredential{
 		cred:      credential,
