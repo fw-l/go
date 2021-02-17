@@ -139,41 +139,12 @@ func (cred *credential) marshalPublicKeyInfo() ([]byte, error) {
 	}
 }
 
-// unmarshalPublicKeyInfo parses a DER encoded PublicKeyInfo from a Delegated
-// Credential to a public key and its corresponding algorithm.
-func unmarshalPublicKeyInfo(serialized []byte) (crypto.PublicKey, SignatureScheme, error) {
-	pubKey, err := x509.ParsePKIXPublicKey(serialized)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	switch pk := pubKey.(type) {
-	case *ecdsa.PublicKey:
-		curveName := pk.Curve.Params().Name
-		if curveName == "P-256" {
-			return pk, ECDSAWithP256AndSHA256, nil
-		} else if curveName == "P-384" {
-			return pk, ECDSAWithP384AndSHA384, nil
-		} else if curveName == "P-521" {
-			return pk, ECDSAWithP521AndSHA512, nil
-		} else {
-			return nil, 0, fmt.Errorf("tls: unsupported ECDSA delegation key type with curve: %s", curveName)
-		}
-	case ed25519.PublicKey:
-		return pk, Ed25519, nil
-	default:
-		return nil, 0, fmt.Errorf("tls: unsupported delgation key type: %T", pk)
-	}
-}
-
 // marshal encodes the credential struct of the Delegated Credential.
 func (cred *credential) marshal() ([]byte, error) {
-	ser := make([]byte, 4)
-	binary.BigEndian.PutUint32(ser, uint32(cred.validTime/time.Second))
+	var b cryptobyte.Builder
 
-	var serAlgo [2]byte
-	binary.BigEndian.PutUint16(serAlgo[:], uint16(cred.expCertVerfAlgo))
-	ser = append(ser, serAlgo[:]...)
+	b.AddUint32(uint32(cred.validTime / time.Second))
+	b.AddUint16(uint16(cred.expCertVerfAlgo))
 
 	// Encode the public key
 	serPub, err := cred.marshalPublicKeyInfo()
@@ -185,12 +156,10 @@ func (cred *credential) marshal() ([]byte, error) {
 		return nil, errors.New("tls: public key length exceeds 2^24-1 limit")
 	}
 
-	var b cryptobyte.Builder
 	b.AddUint24(uint32(len(serPub)))
-	serLen := b.BytesOrPanic()
-	ser = append(ser, serLen[:]...)
-	ser = append(ser, serPub...)
+	b.AddBytes(serPub)
 
+	ser := b.BytesOrPanic()
 	return ser, nil
 }
 
@@ -200,23 +169,28 @@ func unmarshalCredential(ser []byte) (*credential, error) {
 		return nil, errors.New("tls: Delegated Credential is not valid: invalid length")
 	}
 
-	validTime := time.Duration(binary.BigEndian.Uint32(ser)) * time.Second
-	pubAlgo := SignatureScheme(binary.BigEndian.Uint16(ser[4:6]))
+	s := cryptobyte.String(ser)
+	var t uint32
+	if !s.ReadUint32(&t) {
+		return nil, errors.New("tls: Delegated Credential is not valid")
+	}
+	validTime := time.Duration(t) * time.Second
 
-	s := cryptobyte.String(ser[6:9])
+	var pubAlgo uint16
+	if !s.ReadUint16(&pubAlgo) {
+		return nil, errors.New("tls: Delegated Credential is not valid")
+	}
+	algo := SignatureScheme(pubAlgo)
+
 	var pubLen uint32
 	s.ReadUint24(&pubLen)
 
-	pubKey, err := x509.ParsePKIXPublicKey(ser[9:])
+	pubKey, err := x509.ParsePKIXPublicKey(s)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(ser[9:]) != int(pubLen) {
-		return nil, errors.New("tls: Delegated Credential is not valid: invalid public key length")
-	}
-
-	return &credential{validTime, pubAlgo, pubKey}, nil
+	return &credential{validTime, algo, pubKey}, nil
 }
 
 // getCredentialLen returns the number of bytes comprising the serialized
@@ -226,20 +200,17 @@ func getCredentialLen(ser []byte) (int, error) {
 		return 0, errors.New("tls: Delegated Credential is not valid")
 	}
 
-	// The validity time.
-	ser = ser[4:]
-	// The expCertVerfAlgo.
-	ser = ser[2:]
+	var read []byte
+	s := cryptobyte.String(ser)
+	s.ReadBytes(&read, 6)
 
-	// The length of the Public Key.
-	s := cryptobyte.String(ser[:3])
 	var pubLen uint32
 	s.ReadUint24(&pubLen)
 	if !(pubLen > 0) {
 		return 0, errors.New("tls: Delegated Credential is not valid")
 	}
 
-	ser = ser[3:]
+	ser = ser[6:]
 	if len(ser) < int(pubLen) {
 		return 0, errors.New("tls: Delegated Credential is not valid")
 	}
