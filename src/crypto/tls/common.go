@@ -318,7 +318,7 @@ type ConnectionState struct {
 	// (and the peer provided a certificate) or RequireAndVerifyClientCert.
 	VerifiedChains [][]*x509.Certificate
 
-	// VerifiedDC indicates thata the Delegated Credential sent by the peer (if advertised
+	// VerifiedDC indicates that the Delegated Credential sent by the peer (if advertised
 	// and correctly processed), which has been verified against the leaf certificate,
 	// has been used.
 	VerifiedDC bool
