@@ -1836,7 +1836,7 @@ func TestValidHostname(t *testing.T) {
 	}
 }
 
-func generateCert(cn string, isCA bool, issuer *Certificate, issuerKey crypto.PrivateKey) (*Certificate, crypto.PrivateKey, error) {
+func generateCert(cn string, isCA bool, isDC bool, issuer *Certificate, issuerKey crypto.PrivateKey) (*Certificate, crypto.PrivateKey, error) {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
@@ -1855,6 +1855,7 @@ func generateCert(cn string, isCA bool, issuer *Certificate, issuerKey crypto.Pr
 		ExtKeyUsage:           []ExtKeyUsage{ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 		IsCA:                  isCA,
+		IsDC:                  isDC,
 	}
 	if issuer == nil {
 		issuer = template
@@ -1882,21 +1883,21 @@ func TestPathologicalChain(t *testing.T) {
 	// path building worst behavior.
 	roots, intermediates := NewCertPool(), NewCertPool()
 
-	parent, parentKey, err := generateCert("Root CA", true, nil, nil)
+	parent, parentKey, err := generateCert("Root CA", true, false, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	roots.AddCert(parent)
 
 	for i := 1; i < 100; i++ {
-		parent, parentKey, err = generateCert("Intermediate CA", true, parent, parentKey)
+		parent, parentKey, err = generateCert("Intermediate CA", true, false, parent, parentKey)
 		if err != nil {
 			t.Fatal(err)
 		}
 		intermediates.AddCert(parent)
 	}
 
-	leaf, _, err := generateCert("Leaf", false, parent, parentKey)
+	leaf, _, err := generateCert("Leaf", false, true, parent, parentKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1920,7 +1921,7 @@ func TestLongChain(t *testing.T) {
 
 	roots, intermediates := NewCertPool(), NewCertPool()
 
-	parent, parentKey, err := generateCert("Root CA", true, nil, nil)
+	parent, parentKey, err := generateCert("Root CA", true, false, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1928,14 +1929,14 @@ func TestLongChain(t *testing.T) {
 
 	for i := 1; i < 15; i++ {
 		name := fmt.Sprintf("Intermediate CA #%d", i)
-		parent, parentKey, err = generateCert(name, true, parent, parentKey)
+		parent, parentKey, err = generateCert(name, true, false, parent, parentKey)
 		if err != nil {
 			t.Fatal(err)
 		}
 		intermediates.AddCert(parent)
 	}
 
-	leaf, _, err := generateCert("Leaf", false, parent, parentKey)
+	leaf, _, err := generateCert("Leaf", false, true, parent, parentKey)
 	if err != nil {
 		t.Fatal(err)
 	}

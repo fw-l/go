@@ -1590,6 +1590,12 @@ func parseCertificate(in *certificate) (*Certificate, error) {
 					out.IssuingCertificateURL = append(out.IssuingCertificateURL, string(v.Location.Bytes))
 				}
 			}
+		} else if e.Id.Equal(oidExtensionDelegatedCredential) {
+			if out.KeyUsage == KeyUsageDigitalSignature {
+				if e.Value == nil {
+					out.IsDC = true
+				}
+			}
 		} else {
 			// Unknown extensions are recorded if critical.
 			unhandled = true

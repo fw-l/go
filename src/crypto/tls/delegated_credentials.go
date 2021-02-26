@@ -336,7 +336,6 @@ func NewDelegatedCredential(cert *Certificate, pubAlgo SignatureScheme, validTim
 		if err != nil {
 			return nil, nil, err
 		}
-
 	}
 
 	// Check that the leaf certificate can be used for delegation.
